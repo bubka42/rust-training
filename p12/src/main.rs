@@ -2,8 +2,8 @@ fn main() {
     println!("Hello, world!");
 }
 
-fn foo() {}
+pub fn foo() {}
 
-pub fn bar(a: u64) -> u64 {
+pub fn bar(a: u32) -> u64 {
     a as u64
 }
