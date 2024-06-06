@@ -55,93 +55,8 @@ impl Bank {
         username_debit: String,
         username_credit: String,
         amount: u64,
-    ) -> Result<bool, Error> {
-        let mut result: Result<bool, Error> = Ok(true);
-        let a = match i64::try_from(amount) {
-            Ok(am) => am,
-            Err(..) => return Err(Error::BadAmount { amount }),
-        };
-        let mut reset_flag: bool = false;
-        {
-            // scope for user_option
-            let mut user_option: Option<&mut User> = None;
-            for user_d in self.users.iter_mut() {
-                if user_d.name == username_debit {
-                    user_option = Some(user_d);
-                    break;
-                }
-            }
-            match user_option {
-                None => {
-                    return Err(Error::UserNotFound {
-                        username: username_debit,
-                    })
-                }
-                Some(user_d) => match user_d.balance.checked_sub(a) {
-                    Some(b) => {
-                        if b >= 0 || b.unsigned_abs() <= user_d.credit_line {
-                            user_d.balance = b
-                        } else {
-                            return Err(Error::CreditLimitReached);
-                        }
-                    }
-                    None => {
-                        return Err(Error::BalanceUnderflow {
-                            username: username_debit,
-                        })
-                    }
-                },
-            }
-        }
-        {
-            // renewed scope for user_option
-            let mut user_option: Option<&mut User> = None;
-            for user_c in self.users.iter_mut() {
-                if user_c.name == username_credit {
-                    user_option = Some(user_c);
-                    break;
-                }
-            }
-            match user_option {
-                None => {
-                    result = Err(Error::UserNotFound {
-                        username: username_credit,
-                    });
-                    reset_flag = true
-                }
-                Some(user_c) => match user_c.balance.checked_add(a) {
-                    Some(b) => user_c.balance = b,
-                    None => {
-                        result = Err(Error::BalanceOverflow {
-                            username: username_credit,
-                        });
-                        reset_flag = true
-                    }
-                },
-            }
-        }
-        if reset_flag {
-            for user_d in self.users.iter_mut() {
-                if user_d.name == username_debit {
-                    user_d.balance += a;
-                    return result;
-                }
-            }
-        }
-        result
-    }
-
-    // Transfer funds rewritten using indices
-    pub fn transfer_funds_alternate(
-        &mut self,
-        username_debit: String,
-        username_credit: String,
-        amount: u64,
     ) -> Result<(), Error> {
-        let a = match i64::try_from(amount) {
-            Ok(am) => am,
-            Err(..) => return Err(Error::BadAmount { amount }),
-        };
+        let a = i64::try_from(amount).map_err(|_| Error::BadAmount { amount })?;
         let mut index_d_option: Option<usize> = None;
         let mut index_c_option: Option<usize> = None;
         for (index, user) in self.users.iter().enumerate() {
@@ -151,7 +66,7 @@ impl Bank {
             if user.name == username_credit {
                 index_c_option = Some(index);
             }
-            if let (Some(..), Some(..)) = (index_d_option, index_c_option) {
+            if let (Some(_), Some(_)) = (index_d_option, index_c_option) {
                 break;
             }
         }
@@ -161,7 +76,7 @@ impl Bank {
                     username: username_debit,
                 })
             }
-            (Some(..), None) => {
+            (Some(_), None) => {
                 return Err(Error::UserNotFound {
                     username: username_credit,
                 })
@@ -173,6 +88,9 @@ impl Bank {
         let balance_d_new = balance_d.checked_sub(a).ok_or(Error::BalanceUnderflow {
             username: username_debit,
         })?;
+        if balance_d_new < 0 && balance_d_new.unsigned_abs() > self.users[i_d].credit_line {
+            return Err(Error::CreditLimitReached);
+        }
         let balance_c_new = balance_c.checked_sub(a).ok_or(Error::BalanceUnderflow {
             username: username_credit,
         })?;
@@ -184,22 +102,12 @@ impl Bank {
     /// Compute interest for each user
     pub fn accrue_interest(&mut self) -> Result<(), Error> {
         let mut interest: i64;
-        let d_i = match i64::try_from(self.debit_interest) {
-            Ok(i) => i,
-            Err(..) => {
-                return Err(Error::BadInterest {
-                    interest: self.debit_interest,
-                })
-            }
-        };
-        let c_i = match i64::try_from(self.credit_interest) {
-            Ok(i) => i,
-            Err(..) => {
-                return Err(Error::BadInterest {
-                    interest: self.credit_interest,
-                })
-            }
-        };
+        let d_i = i64::try_from(self.debit_interest).map_err(|_| Error::BadInterest {
+            interest: self.debit_interest,
+        })?;
+        let c_i = i64::try_from(self.credit_interest).map_err(|_| Error::BadInterest {
+            interest: self.credit_interest,
+        })?;
         for user in self.users.iter_mut() {
             interest = if user.balance > 0 {
                 user.balance
@@ -226,23 +134,19 @@ impl Bank {
 
     /// Merge two banks and destroy the second
     pub fn merge_bank(&mut self, bank: Bank) -> Result<(), Error> {
-        let mut flag: bool = false;
-        for user in bank.users.iter() {
+        'outer_loop: for user in bank.users.iter() {
             for u in self.users.iter_mut() {
                 if user.name == u.name {
-                    flag = true;
                     u.balance =
                         u.balance
                             .checked_add(user.balance)
                             .ok_or(Error::BalanceOverflow {
                                 username: u.name.clone(),
-                            })?
+                            })?;
+                    continue 'outer_loop;
                 }
             }
-            if !flag {
-                self.users.push(user.clone());
-            }
-            flag = false;
+            self.users.push(user.clone());
         }
         Ok(())
     }
