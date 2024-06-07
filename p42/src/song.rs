@@ -95,7 +95,10 @@ impl Iterator for SongIter {
         if self.day > 12 || self.index > 13 {
             None
         } else {
-            let line = self.get_line();
+            let mut line = self.get_line();
+            if self.day < 12 || self.index < 13 {
+                line.push('\n');
+            }
             self.increment();
             Some(line)
         }
@@ -110,6 +113,20 @@ pub fn iter_with_line_num() -> impl Iterator<Item = String> {
         .map(|(num, line)| (num + 1).to_string() + ": " + &line)
 }
 
+/// duplicate each line in lyrics
+pub fn duplicate_lines(
+    iter: impl Iterator<Item = String>,
+    num: usize,
+) -> impl Iterator<Item = String> {
+    iter.flat_map(move |line| {
+        let mut numlines = Vec::new();
+        for _ in 0..num {
+            numlines.push(line.clone());
+        }
+        numlines
+    })
+}
+
 /// extract lyrics from song iterator
 /// ```
 /// use p42::song::SongIter;
@@ -121,7 +138,6 @@ pub fn iter_with_line_num() -> impl Iterator<Item = String> {
 pub fn song_to_string(mut iter: impl Iterator<Item = String>) -> String {
     let mut lyrics = iter.next().unwrap();
     for line in iter {
-        lyrics.push('\n');
         lyrics.push_str(line.as_str());
     }
     lyrics
@@ -134,33 +150,37 @@ pub fn song_to_file_1(iter: impl Iterator<Item = String>, path: &String) -> std:
 }
 
 /// extract lyrics from song iterator into file without using song_to_iter
-pub fn song_to_file_2(
-    mut iter: impl Iterator<Item = String>,
-    path: &String,
-) -> std::io::Result<()> {
-    let mut file = std::io::LineWriter::new(std::fs::File::create(path)?);
-    file.write_all(iter.next().unwrap().as_bytes())?;
+pub fn song_to_file_2(iter: impl Iterator<Item = String>, path: &String) -> std::io::Result<()> {
+    let mut file = std::fs::File::create(path)?;
     for line in iter {
-        file.write_all(b"\n")?;
         file.write_all(line.as_bytes())?;
     }
-    file.flush()?;
     Ok(())
 }
 
 // send lyrics from iterator to TCP connection
-pub fn song_to_tcp(mut iter: impl Iterator<Item = String>, addr: &String) -> std::io::Result<()> {
+pub fn song_to_tcp(mut iter: impl Iterator<Item = String>, addr: &str) -> std::io::Result<()> {
     let mut stream = std::net::TcpStream::connect(addr)?;
     stream.write_all(iter.next().unwrap().as_bytes())?;
     for line in iter {
-        stream.write_all(b"\n")?;
         stream.write_all(line.as_bytes())?;
     }
     Ok(())
 }
 
+// listen to TCP connection for song lyrics
+pub fn song_from_tcp(port: u16) -> std::io::Result<()> {
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = std::net::TcpListener::bind(addr)?;
+    let mut stdout = std::io::stdout().lock();
+    std::io::copy(&mut listener.accept()?.0, &mut stdout)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+    use super::SongIter;
+
     #[test]
     fn test_get_line() {
         let new_iter = super::SongIter { day: 1, index: 2 };
@@ -185,14 +205,17 @@ mod tests {
         let mut new_iter = super::SongIter { day: 1, index: 0 };
         assert_eq!(
             new_iter.next().unwrap().as_str(),
-            "On the first day of Christmas,"
+            "On the first day of Christmas,\n"
         );
-        assert_eq!(new_iter.next().unwrap().as_str(), "my true love gave to me");
         assert_eq!(
             new_iter.next().unwrap().as_str(),
-            "A partridge in a pear tree."
+            "my true love gave to me\n"
         );
-        assert_eq!(new_iter.next().unwrap().as_str(), "");
+        assert_eq!(
+            new_iter.next().unwrap().as_str(),
+            "A partridge in a pear tree.\n"
+        );
+        assert_eq!(new_iter.next().unwrap().as_str(), "\n");
     }
 
     #[test]
@@ -200,16 +223,47 @@ mod tests {
         let mut new_iter_num = super::iter_with_line_num();
         assert_eq!(
             new_iter_num.next().unwrap().as_str(),
-            "1: On the first day of Christmas,"
+            "1: On the first day of Christmas,\n"
         );
         assert_eq!(
             new_iter_num.next().unwrap().as_str(),
-            "2: my true love gave to me"
+            "2: my true love gave to me\n"
         );
         assert_eq!(
             new_iter_num.next().unwrap().as_str(),
-            "3: A partridge in a pear tree."
+            "3: A partridge in a pear tree.\n"
         );
-        assert_eq!(new_iter_num.next().unwrap().as_str(), "4: ");
+        assert_eq!(new_iter_num.next().unwrap().as_str(), "4: \n");
+    }
+
+    #[test]
+    fn test_duplicate_lines() {
+        let mut duplicate_iter = super::duplicate_lines(SongIter::default(), 2);
+        assert_eq!(
+            duplicate_iter.next().unwrap().as_str(),
+            "On the first day of Christmas,\n"
+        );
+        assert_eq!(
+            duplicate_iter.next().unwrap().as_str(),
+            "On the first day of Christmas,\n"
+        );
+        assert_eq!(
+            duplicate_iter.next().unwrap().as_str(),
+            "my true love gave to me\n"
+        );
+        assert_eq!(
+            duplicate_iter.next().unwrap().as_str(),
+            "my true love gave to me\n"
+        );
+        assert_eq!(
+            duplicate_iter.next().unwrap().as_str(),
+            "A partridge in a pear tree.\n"
+        );
+        assert_eq!(
+            duplicate_iter.next().unwrap().as_str(),
+            "A partridge in a pear tree.\n"
+        );
+        assert_eq!(duplicate_iter.next().unwrap().as_str(), "\n");
+        assert_eq!(duplicate_iter.next().unwrap().as_str(), "\n");
     }
 }
