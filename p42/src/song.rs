@@ -144,6 +144,18 @@ pub fn song_to_file_2(
         file.write_all(b"\n")?;
         file.write_all(line.as_bytes())?;
     }
+    file.flush()?;
+    Ok(())
+}
+
+// send lyrics from iterator to TCP connection
+pub fn song_to_tcp(mut iter: impl Iterator<Item = String>, addr: &String) -> std::io::Result<()> {
+    let mut stream = std::net::TcpStream::connect(addr)?;
+    stream.write_all(iter.next().unwrap().as_bytes())?;
+    for line in iter {
+        stream.write_all(b"\n")?;
+        stream.write_all(line.as_bytes())?;
+    }
     Ok(())
 }
 
