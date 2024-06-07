@@ -147,6 +147,7 @@ pub fn song_to_file_2(
     Ok(())
 }
 
+#[cfg(test)]
 mod tests {
     #[test]
     fn test_get_line() {
