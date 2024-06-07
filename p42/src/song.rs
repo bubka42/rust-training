@@ -1,12 +1,14 @@
 extern crate std;
 
+use std::io::Write;
+
 static DAYS: [&str; 12] = [
     "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
     "eleventh", "twelfth",
 ];
 
 static GIFTS: [&str; 12] = [
-    " partridge in a pear tree.",
+    " partridge in a pear tree",
     "Two turtle doves,",
     "Three French hens,",
     "Four calling birds,",
@@ -22,7 +24,7 @@ static GIFTS: [&str; 12] = [
 
 static LEFT: &str = "On the ";
 static RIGHT: &str = " day of Christmas,";
-static SECOND: &str = "My true love gave to me";
+static SECOND: &str = "my true love gave to me";
 static V1: &str = "A";
 static V2: &str = "And a";
 
@@ -45,21 +47,6 @@ impl SongIter {
     /// let new_iter = SongIter { day: 1, index: 0 };
     /// let s = new_iter.get_line();
     /// assert_eq!(s.as_str(), "On the first day of Christmas,");
-    /// let new_iter = SongIter { day: 1, index: 2 };
-    /// let s = new_iter.get_line();
-    /// assert_eq!(s.as_str(), "A partridge in a pear tree.");
-    /// let new_iter = SongIter { day: 3, index: 4 };
-    /// let s = new_iter.get_line();
-    /// assert_eq!(s.as_str(), "And a partridge in a pear tree.");
-    /// let new_iter = SongIter { day: 6, index: 8 };
-    /// let s = new_iter.get_line();
-    /// assert_eq!(s.as_str(), "");
-    /// let new_iter = SongIter { day: 8, index: 1 };
-    /// let s = new_iter.get_line();
-    /// assert_eq!(s.as_str(), "My true love gave to me");
-    /// let new_iter = SongIter { day: 10, index: 4 };
-    /// let s = new_iter.get_line();
-    /// assert_eq!(s.as_str(), "Eight maids a-milking,");
     /// ```
     pub fn get_line(&self) -> String {
         match self.index {
@@ -79,6 +66,10 @@ impl SongIter {
                         _ => String::from(V2),
                     };
                     v.push_str(GIFTS[0]);
+                    match self.day {
+                        12 => v.push('!'),
+                        _ => v.push('.'),
+                    };
                     v
                 } else {
                     String::from(GIFTS[self.day - i + 1])
@@ -111,21 +102,6 @@ impl Iterator for SongIter {
     }
 }
 
-#[test]
-fn test_iter() {
-    let mut new_iter = SongIter { day: 1, index: 0 };
-    assert_eq!(
-        new_iter.next().unwrap().as_str(),
-        "On the first day of Christmas,"
-    );
-    assert_eq!(new_iter.next().unwrap().as_str(), "My true love gave to me");
-    assert_eq!(
-        new_iter.next().unwrap().as_str(),
-        "A partridge in a pear tree."
-    );
-    assert_eq!(new_iter.next().unwrap().as_str(), "");
-}
-
 /// add line number to each line in lyrics
 pub fn iter_with_line_num() -> impl Iterator<Item = String> {
     let song_iter: SongIter = SongIter::default();
@@ -134,31 +110,13 @@ pub fn iter_with_line_num() -> impl Iterator<Item = String> {
         .map(|(num, line)| (num + 1).to_string() + ": " + &line)
 }
 
-#[test]
-fn test_iter_with_line_num() {
-    let mut new_iter_num = iter_with_line_num();
-    assert_eq!(
-        new_iter_num.next().unwrap().as_str(),
-        "1: On the first day of Christmas,"
-    );
-    assert_eq!(
-        new_iter_num.next().unwrap().as_str(),
-        "2: My true love gave to me"
-    );
-    assert_eq!(
-        new_iter_num.next().unwrap().as_str(),
-        "3: A partridge in a pear tree."
-    );
-    assert_eq!(new_iter_num.next().unwrap().as_str(), "4: ");
-}
-
 /// extract lyrics from song iterator
 /// ```
 /// use p42::song::SongIter;
 /// use p42::song::song_to_string;
 /// use p42::song::iter_with_line_num;
 ///
-/// assert_eq!(song_to_string(iter_with_line_num()), "1: On the first day of Christmas,\n2: My true love gave to me\n3: A partridge in a pear tree.\n4: \n5: On the second day of Christmas,\n6: My true love gave to me\n7: Two turtle doves,\n8: And a partridge in a pear tree.\n9: \n10: On the third day of Christmas,\n11: My true love gave to me\n12: Three French hens,\n13: Two turtle doves,\n14: And a partridge in a pear tree.\n15: \n16: On the fourth day of Christmas,\n17: My true love gave to me\n18: Four calling birds,\n19: Three French hens,\n20: Two turtle doves,\n21: And a partridge in a pear tree.\n22: \n23: On the fifth day of Christmas,\n24: My true love gave to me\n25: Five golden rings,\n26: Four calling birds,\n27: Three French hens,\n28: Two turtle doves,\n29: And a partridge in a pear tree.\n30: \n31: On the sixth day of Christmas,\n32: My true love gave to me\n33: Six geese a-laying,\n34: Five golden rings,\n35: Four calling birds,\n36: Three French hens,\n37: Two turtle doves,\n38: And a partridge in a pear tree.\n39: \n40: On the seventh day of Christmas,\n41: My true love gave to me\n42: Seven swans a-swimming,\n43: Six geese a-laying,\n44: Five golden rings,\n45: Four calling birds,\n46: Three French hens,\n47: Two turtle doves,\n48: And a partridge in a pear tree.\n49: \n50: On the eighth day of Christmas,\n51: My true love gave to me\n52: Eight maids a-milking,\n53: Seven swans a-swimming,\n54: Six geese a-laying,\n55: Five golden rings,\n56: Four calling birds,\n57: Three French hens,\n58: Two turtle doves,\n59: And a partridge in a pear tree.\n60: \n61: On the ninth day of Christmas,\n62: My true love gave to me\n63: Nine ladies dancing,\n64: Eight maids a-milking,\n65: Seven swans a-swimming,\n66: Six geese a-laying,\n67: Five golden rings,\n68: Four calling birds,\n69: Three French hens,\n70: Two turtle doves,\n71: And a partridge in a pear tree.\n72: \n73: On the tenth day of Christmas,\n74: My true love gave to me\n75: Ten lords a-leaping,\n76: Nine ladies dancing,\n77: Eight maids a-milking,\n78: Seven swans a-swimming,\n79: Six geese a-laying,\n80: Five golden rings,\n81: Four calling birds,\n82: Three French hens,\n83: Two turtle doves,\n84: And a partridge in a pear tree.\n85: \n86: On the eleventh day of Christmas,\n87: My true love gave to me\n88: Eleven pipers piping,\n89: Ten lords a-leaping,\n90: Nine ladies dancing,\n91: Eight maids a-milking,\n92: Seven swans a-swimming,\n93: Six geese a-laying,\n94: Five golden rings,\n95: Four calling birds,\n96: Three French hens,\n97: Two turtle doves,\n98: And a partridge in a pear tree.\n99: \n100: On the twelfth day of Christmas,\n101: My true love gave to me\n102: Twelve drummers drumming,\n103: Eleven pipers piping,\n104: Ten lords a-leaping,\n105: Nine ladies dancing,\n106: Eight maids a-milking,\n107: Seven swans a-swimming,\n108: Six geese a-laying,\n109: Five golden rings,\n110: Four calling birds,\n111: Three French hens,\n112: Two turtle doves,\n113: And a partridge in a pear tree.");
+/// assert_eq!(song_to_string(SongIter::default()), include_str!("lyrics_for_test.txt").replace("\r", ""));
 /// ```
 pub fn song_to_string(mut iter: impl Iterator<Item = String>) -> String {
     let mut lyrics = iter.next().unwrap();
@@ -169,8 +127,76 @@ pub fn song_to_string(mut iter: impl Iterator<Item = String>) -> String {
     lyrics
 }
 
-/// extract lyrics from song iterator into file
-pub fn song_to_file(iter: impl Iterator<Item = String>, path: &String) -> std::io::Result<()> {
+/// extract lyrics from song iterator into file using song_to_iter
+pub fn song_to_file_1(iter: impl Iterator<Item = String>, path: &String) -> std::io::Result<()> {
     std::fs::write(path, song_to_string(iter))?;
     Ok(())
+}
+
+/// extract lyrics from song iterator into file without using song_to_iter
+pub fn song_to_file_2(
+    mut iter: impl Iterator<Item = String>,
+    path: &String,
+) -> std::io::Result<()> {
+    let mut file = std::io::LineWriter::new(std::fs::File::create(path)?);
+    file.write_all(iter.next().unwrap().as_bytes())?;
+    for line in iter {
+        file.write_all(b"\n")?;
+        file.write_all(line.as_bytes())?;
+    }
+    Ok(())
+}
+
+mod tests {
+    #[test]
+    fn test_get_line() {
+        let new_iter = super::SongIter { day: 1, index: 2 };
+        let s = new_iter.get_line();
+        assert_eq!(s.as_str(), "A partridge in a pear tree.");
+        let new_iter = super::SongIter { day: 3, index: 4 };
+        let s = new_iter.get_line();
+        assert_eq!(s.as_str(), "And a partridge in a pear tree.");
+        let new_iter = super::SongIter { day: 6, index: 8 };
+        let s = new_iter.get_line();
+        assert_eq!(s.as_str(), "");
+        let new_iter = super::SongIter { day: 8, index: 1 };
+        let s = new_iter.get_line();
+        assert_eq!(s.as_str(), "my true love gave to me");
+        let new_iter = super::SongIter { day: 10, index: 4 };
+        let s = new_iter.get_line();
+        assert_eq!(s.as_str(), "Eight maids a-milking,");
+    }
+
+    #[test]
+    fn test_iter() {
+        let mut new_iter = super::SongIter { day: 1, index: 0 };
+        assert_eq!(
+            new_iter.next().unwrap().as_str(),
+            "On the first day of Christmas,"
+        );
+        assert_eq!(new_iter.next().unwrap().as_str(), "my true love gave to me");
+        assert_eq!(
+            new_iter.next().unwrap().as_str(),
+            "A partridge in a pear tree."
+        );
+        assert_eq!(new_iter.next().unwrap().as_str(), "");
+    }
+
+    #[test]
+    fn test_iter_with_line_num() {
+        let mut new_iter_num = super::iter_with_line_num();
+        assert_eq!(
+            new_iter_num.next().unwrap().as_str(),
+            "1: On the first day of Christmas,"
+        );
+        assert_eq!(
+            new_iter_num.next().unwrap().as_str(),
+            "2: my true love gave to me"
+        );
+        assert_eq!(
+            new_iter_num.next().unwrap().as_str(),
+            "3: A partridge in a pear tree."
+        );
+        assert_eq!(new_iter_num.next().unwrap().as_str(), "4: ");
+    }
 }
