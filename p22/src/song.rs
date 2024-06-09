@@ -35,7 +35,7 @@ pub fn get_line(day: usize, index: usize) -> String {
         1 => String::from(SECOND),
         i => {
             if i == day + 2 {
-                String::from("")
+                String::new()
             } else if i == day + 1 {
                 let mut v = match day {
                     1 => String::from(V1),
