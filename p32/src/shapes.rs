@@ -176,6 +176,7 @@ impl Shape for DynamicShape {
     }
 }
 
+#[derive(Debug)]
 pub enum Return<'a, 'b, T, U> {
     First(&'a T),
     Second(&'b U),
@@ -206,24 +207,12 @@ pub fn biggest_area_to_perimeter<'a, 'b, T: Shape, U: Shape>(
             }
         });
 
-    match (firstoption, secondoption) {
-        (Some((fmaxshape, fmax)), Some((smaxshape, smax))) => {
-            if fmax > smax {
-                println!("{:#?}", fmaxshape);
-                Return::First(fmaxshape)
-            } else {
-                println!("{:#?}", smaxshape);
-                Return::Second(smaxshape)
-            }
-        }
-        (Some((fmaxshape, _)), None) => {
-            println!("{:#?}", fmaxshape);
-            Return::First(fmaxshape)
-        }
-        (None, Some((smaxshape, _))) => {
-            println!("{:#?}", smaxshape);
-            Return::Second(smaxshape)
-        }
+    let ret = match (firstoption, secondoption) {
+        (Some((fmaxshape, _)), None) => Return::First(fmaxshape),
+        (Some((fmaxshape, fmax)), Some((_, smax))) if fmax > smax => Return::First(fmaxshape),
+        (_, Some((smaxshape, _))) => Return::Second(smaxshape),
         (None, None) => panic!(),
-    }
+    };
+    println!("{:#?}", ret);
+    ret
 }
