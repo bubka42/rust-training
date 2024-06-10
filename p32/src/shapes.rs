@@ -176,17 +176,40 @@ impl Shape for DynamicShape {
     }
 }
 
-// pub enum Return {
-//     First,
-//     Second,
-// }
+pub enum Return<'a, T, U> {
+    First(&'a T),
+    Second(&'a U),
+}
 
-// pub fn bigger_area_to_perimeter<'a>(first: &'a [impl Shape], second: &'a [impl Shape]) -> Return {
-//     if first.area_to_perimeter() > second.area_to_perimeter() {
-//         println!("{first:#?}");
-//         Return::First(first[0])
-//     } else {
-//         println!("{second:#?}");
-//         Return::Second
-//     }
-// }
+pub fn bigger_area_to_perimeter<'a>(
+    first: &'a [impl Shape],
+    second: &'a [impl Shape],
+) -> Return<'a, impl Shape, impl Shape> {
+    let fmax = first
+        .iter()
+        .map(|shape| shape.area_to_perimeter())
+        .reduce(f32::max)
+        .unwrap();
+    let smax = second
+        .iter()
+        .map(|shape| shape.area_to_perimeter())
+        .reduce(f32::max)
+        .unwrap();
+    if fmax > smax {
+        let (fmax_idx, _) = first
+            .iter()
+            .enumerate()
+            .find(|(_, shape)| shape.area_to_perimeter() == fmax)
+            .unwrap();
+        println!("{:#?}", first[fmax_idx]);
+        Return::First(&first[fmax_idx])
+    } else {
+        let (smax_idx, _) = second
+            .iter()
+            .enumerate()
+            .find(|(_, shape)| shape.area_to_perimeter() == smax)
+            .unwrap();
+        println!("{:#?}", second[smax_idx]);
+        Return::Second(&second[smax_idx])
+    }
+}
