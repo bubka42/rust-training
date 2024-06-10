@@ -26,6 +26,7 @@ pub enum Error {
     LiabilitiesOverflow,
     AssetsOverflow,
     InterestOverflow { uname: String },
+    InterestUnderflow { uname: String },
     BadInterest { interest: u64 },
 }
 
@@ -37,15 +38,13 @@ impl Bank {
         let mut assets: u64 = 0;
         for user in self.users.values() {
             if user.balance > 0 {
-                liabilities = match liabilities.checked_add(user.balance.unsigned_abs()) {
-                    Some(b) => b,
-                    None => return Err(Error::LiabilitiesOverflow),
-                }
+                liabilities = liabilities
+                    .checked_add(user.balance.unsigned_abs())
+                    .ok_or(Error::LiabilitiesOverflow)?;
             } else {
-                assets = match assets.checked_add(user.balance.unsigned_abs()) {
-                    Some(b) => b,
-                    None => return Err(Error::AssetsOverflow),
-                }
+                assets = assets
+                    .checked_add(user.balance.unsigned_abs())
+                    .ok_or(Error::AssetsOverflow)?;
             }
         }
         Ok((liabilities, assets))
@@ -102,7 +101,7 @@ impl Bank {
             } else {
                 user.balance
                     .checked_mul(c_i)
-                    .ok_or(Error::InterestOverflow {
+                    .ok_or(Error::InterestUnderflow {
                         uname: user.name.clone(),
                     })?
             };
