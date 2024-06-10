@@ -5,9 +5,9 @@ fn main() {
     let nth = nth_item(&arr, &n);
     let increased = increased_by_first_item(&arr, &mut n);
 
-    let values: TwoValues = TwoValues::new(&arr[3], increased);
-
     let value = {
+        let values = TwoValues::new(&arr[3], increased);
+
         assert_eq!(*values.get_first(), 16);
 
         values.get_second()
@@ -40,7 +40,7 @@ impl<'a> TwoValues<'a> {
         self.first
     }
 
-    pub fn get_second(&self) -> &usize {
+    pub fn get_second(&self) -> &'a usize {
         self.second
     }
 }
