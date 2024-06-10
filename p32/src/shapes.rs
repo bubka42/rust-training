@@ -176,40 +176,54 @@ impl Shape for DynamicShape {
     }
 }
 
-pub enum Return<'a, T, U> {
+pub enum Return<'a, 'b, T, U> {
     First(&'a T),
-    Second(&'a U),
+    Second(&'b U),
 }
 
-pub fn bigger_area_to_perimeter<'a>(
-    first: &'a [impl Shape],
-    second: &'a [impl Shape],
-) -> Return<'a, impl Shape, impl Shape> {
-    let fmax = first
+pub fn biggest_area_to_perimeter<'a, 'b, T: Shape, U: Shape>(
+    first: &'a [T],
+    second: &'b [U],
+) -> Return<'a, 'b, T, U> {
+    let firstoption = first
         .iter()
-        .map(|shape| shape.area_to_perimeter())
-        .reduce(f32::max)
-        .unwrap();
-    let smax = second
+        .map(|shape| (shape, shape.area_to_perimeter()))
+        .reduce(|(shape1, value1), (shape2, value2)| {
+            if value1 > value2 {
+                (shape1, value1)
+            } else {
+                (shape2, value2)
+            }
+        });
+    let secondoption = second
         .iter()
-        .map(|shape| shape.area_to_perimeter())
-        .reduce(f32::max)
-        .unwrap();
-    if fmax > smax {
-        let (fmax_idx, _) = first
-            .iter()
-            .enumerate()
-            .find(|(_, shape)| shape.area_to_perimeter() == fmax)
-            .unwrap();
-        println!("{:#?}", first[fmax_idx]);
-        Return::First(&first[fmax_idx])
-    } else {
-        let (smax_idx, _) = second
-            .iter()
-            .enumerate()
-            .find(|(_, shape)| shape.area_to_perimeter() == smax)
-            .unwrap();
-        println!("{:#?}", second[smax_idx]);
-        Return::Second(&second[smax_idx])
+        .map(|shape| (shape, shape.area_to_perimeter()))
+        .reduce(|(shape1, acc), (shape2, value)| {
+            if acc > value {
+                (shape1, acc)
+            } else {
+                (shape2, value)
+            }
+        });
+
+    match (firstoption, secondoption) {
+        (Some((fmaxshape, fmax)), Some((smaxshape, smax))) => {
+            if fmax > smax {
+                println!("{:#?}", fmaxshape);
+                Return::First(fmaxshape)
+            } else {
+                println!("{:#?}", smaxshape);
+                Return::Second(smaxshape)
+            }
+        }
+        (Some((fmaxshape, _)), None) => {
+            println!("{:#?}", fmaxshape);
+            Return::First(fmaxshape)
+        }
+        (None, Some((smaxshape, _))) => {
+            println!("{:#?}", smaxshape);
+            Return::Second(smaxshape)
+        }
+        (None, None) => panic!(),
     }
 }
