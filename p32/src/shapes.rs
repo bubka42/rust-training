@@ -6,10 +6,7 @@ pub trait Shape: std::fmt::Debug {
     fn scale(&mut self, factor: f32);
 
     fn area_to_perimeter(&self) -> f32 {
-        match self.perimeter() {
-            0.0 => 0.0,
-            _ => self.area() / self.perimeter(),
-        }
+        self.area() / self.perimeter()
     }
 
     fn biggest_area<'a>(first: &'a Self, second: &'a Self) -> &'a Self {
@@ -71,6 +68,10 @@ impl Shape for Point {
     }
 
     fn perimeter(&self) -> f32 {
+        0.0
+    }
+
+    fn area_to_perimeter(&self) -> f32 {
         0.0
     }
 
@@ -175,17 +176,17 @@ impl Shape for DynamicShape {
     }
 }
 
-pub enum Return {
-    First,
-    Second,
-}
+// pub enum Return {
+//     First,
+//     Second,
+// }
 
-pub fn bigger_area_to_perimeter<'a>(first: &'a impl Shape, second: &'a impl Shape) -> Return {
-    if first.area_to_perimeter() > second.area_to_perimeter() {
-        println!("{first:#?}");
-        Return::First
-    } else {
-        println!("{second:#?}");
-        Return::Second
-    }
-}
+// pub fn bigger_area_to_perimeter<'a>(first: &'a [impl Shape], second: &'a [impl Shape]) -> Return {
+//     if first.area_to_perimeter() > second.area_to_perimeter() {
+//         println!("{first:#?}");
+//         Return::First(first[0])
+//     } else {
+//         println!("{second:#?}");
+//         Return::Second
+//     }
+// }
