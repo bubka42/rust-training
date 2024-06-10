@@ -20,7 +20,7 @@ pub enum Error {
     BalanceOverflow { username: String },
     BalanceUnderflow { username: String },
     BadAmount { amount: u64 },
-    CreditLimitReached,
+    CreditLimitReached { username: String },
     LiabilitiesOverflow,
     AssetsOverflow,
     InterestOverflow { username: String },
@@ -86,13 +86,15 @@ impl Bank {
         let balance_d = self.users[i_d].balance;
         let balance_c = self.users[i_c].balance;
         let balance_d_new = balance_d.checked_sub(a).ok_or(Error::BalanceUnderflow {
-            username: username_debit,
+            username: username_debit.clone(),
         })?;
         if balance_d_new < 0 && balance_d_new.unsigned_abs() > self.users[i_d].credit_line {
-            return Err(Error::CreditLimitReached);
+            return Err(Error::CreditLimitReached {
+                username: username_debit.clone(),
+            });
         }
-        let balance_c_new = balance_c.checked_sub(a).ok_or(Error::BalanceUnderflow {
-            username: username_credit,
+        let balance_c_new = balance_c.checked_add(a).ok_or(Error::BalanceOverflow {
+            username: username_credit.clone(),
         })?;
         self.users[i_d].balance = balance_d_new;
         self.users[i_c].balance = balance_c_new;
