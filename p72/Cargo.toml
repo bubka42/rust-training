@@ -1,0 +1,9 @@
+[package]
+name = "p72"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ring = { version = "0.17" }
+getrandom = { version = "0.2" }
+base16ct = { version = "0.2" }
