@@ -1,19 +1,25 @@
 use base16ct::mixed;
 use p72::encrypt;
-use std::env;
+use std::{env, io};
 
 fn main() -> std::io::Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let mut args = env::args();
 
-    let input_path = &args[1][..];
-    let output_path = &args[2][..];
-    let key = &args[3];
+    args.next().unwrap();
+    let input_path = &args.next().expect("Provide input path")[..];
+    let output_path = &args.next().expect("Provide output path")[..];
+    let key = &args.next().expect("Provide hex-encoded key")[..];
+
+    println!("Encrypting {} into {}...", input_path, output_path);
 
     let mut buf = [0u8; 16];
     let key_bytes = mixed::decode(key, &mut buf).unwrap();
-    assert_eq!(key_bytes.len(), 16);
-
-    println!("Encrypting {} into {}...", input_path, output_path);
-    encrypt(input_path, output_path, key_bytes.try_into().unwrap())?;
+    encrypt(
+        input_path,
+        output_path,
+        key_bytes.try_into().map_err(|_| {
+            io::Error::new(io::ErrorKind::Other, "Wrong key length: 16 bytes expected")
+        })?,
+    )?;
     Ok(())
 }
