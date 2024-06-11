@@ -1,9 +1,9 @@
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct BigUInt4096 {
     chunks: [u64; 64],
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct BigUInt8192 {
     chunks: [u64; 128],
 }
@@ -374,7 +374,10 @@ mod tests {
         let num1 = BigUInt4096::new(&[2u64]);
         let num2 = BigUInt4096::new(&[2u64, 0u64]);
         let num3 = BigUInt4096::new(&[4u64]);
-        assert_eq!(num1 + num2, num3);
+        assert_eq!(num1.clone() + num2.clone(), num3);
+        assert_eq!(num1.clone() + &num2, num3);
+        assert_eq!(&num1 + num2.clone(), num3);
+        assert_eq!(&num1 + &num2, num3);
     }
 
     #[test]
@@ -382,7 +385,10 @@ mod tests {
         let num1 = BigUInt4096::new(&[2u64, 0u64]);
         let num2 = BigUInt4096::new(&[u64::MAX]);
         let num3 = BigUInt4096::new(&[1u64, 1u64]);
-        assert_eq!(num1 + num2, num3);
+        assert_eq!(num1.clone() + num2.clone(), num3);
+        assert_eq!(num1.clone() + &num2, num3);
+        assert_eq!(&num1 + num2.clone(), num3);
+        assert_eq!(&num1 + &num2, num3);
     }
 
     #[test]
@@ -398,7 +404,10 @@ mod tests {
         let num1 = BigUInt4096::new(&[0u64, 1u64]);
         let num2 = BigUInt4096::new(&[1u64]);
         let num3 = BigUInt4096::new(&[u64::MAX]);
-        assert_eq!(num1 - num2, num3);
+        assert_eq!(num1.clone() - num2.clone(), num3);
+        assert_eq!(num1.clone() - &num2, num3);
+        assert_eq!(&num1 - num2.clone(), num3);
+        assert_eq!(&num1 - &num2, num3);
     }
 
     #[test]
@@ -406,7 +415,10 @@ mod tests {
         let num1 = BigUInt4096::new(&[0u64, 4u64]);
         let num2 = BigUInt4096::new(&[u64::MAX]);
         let num3 = BigUInt4096::new(&[1u64, 3u64]);
-        assert_eq!(num1 - num2, num3);
+        assert_eq!(num1.clone() - num2.clone(), num3);
+        assert_eq!(num1.clone() - &num2, num3);
+        assert_eq!(&num1 - num2.clone(), num3);
+        assert_eq!(&num1 - &num2, num3);
     }
 
     #[test]
@@ -422,7 +434,10 @@ mod tests {
         let num1 = BigUInt4096::new_from_middle(&[0xd9u64], 26);
         let num2 = BigUInt4096::new_from_middle(&[0x45u64], 14);
         let num3 = BigUInt4096::new_from_middle(&[0x3a7du64], 40);
-        assert_eq!(num1 * num2, num3);
+        assert_eq!(num1.clone() * num2.clone(), num3);
+        assert_eq!(num1.clone() * &num2, num3);
+        assert_eq!(&num1 * num2.clone(), num3);
+        assert_eq!(&num1 * &num2, num3);
     }
 
     #[test]
@@ -430,7 +445,10 @@ mod tests {
         let num1 = BigUInt4096::new_from_middle(&[0x1u64, 0x1u64], 20);
         let num2 = BigUInt4096::new_from_middle(&[0x1u64, 0x1u64], 32);
         let num3 = BigUInt4096::new_from_middle(&[0x1u64, 0x2u64, 0x1u64], 52);
-        assert_eq!(num1 * num2, num3);
+        assert_eq!(num1.clone() * num2.clone(), num3);
+        assert_eq!(num1.clone() * &num2, num3);
+        assert_eq!(&num1 * num2.clone(), num3);
+        assert_eq!(&num1 * &num2, num3);
     }
 
     #[test]
