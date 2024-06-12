@@ -1,0 +1,13 @@
+[package]
+name = "project"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+x25519-dalek = { version = "2.0", features = ["getrandom", "reusable_secrets"] }
+aes-gcm-siv = { version = "0.11" }
+aead = { version = "0.5" }
+hkdf = { version = "0.12" }
+sha2 = { version = "0.10" }
+getrandom = { version = "0.2" }
+hmac = { version = "0.12", features = ["reset"]}
