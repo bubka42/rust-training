@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter, Result};
 
 use aead::{Aead, KeyInit, Payload};
 use aes_gcm_siv::{Aes256GcmSiv, Nonce};
@@ -9,7 +10,7 @@ use x25519_dalek::{PublicKey, ReusableSecret};
 
 type HmacSha256 = Hmac<Sha256>;
 
-#[derive(Default, PartialEq, Eq)]
+#[derive(Default, PartialEq, Eq, Clone)]
 pub struct SymmKey([u8; 32]);
 
 pub struct State {
@@ -29,6 +30,22 @@ pub struct Header {
     dhpk: PublicKey,
     prev_n: u64,
     n: u64,
+}
+
+impl SymmKey {
+    pub fn new(key_bytes: [u8; 32]) -> Self {
+        SymmKey(key_bytes)
+    }
+
+    pub fn first_key_byte(&self) -> u8 {
+        self.0[0]
+    }
+}
+
+impl Display for SymmKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "Symmkey({:?})", self.0)
+    }
 }
 
 impl Header {
@@ -53,6 +70,8 @@ impl Header {
 impl State {
     pub const MAX_SKIP: u64 = 100;
     // helper functions
+
+    /// function to derive new root key and chain key from shared secret and old root key using HKDF
     fn kdf_root(
         rt_k: &SymmKey,
         dhsk_snd: &ReusableSecret,
@@ -67,7 +86,18 @@ impl State {
         (SymmKey(rk_bytes), SymmKey(ck_bytes))
     }
 
-    fn kdf_chain(chn_k: &SymmKey) -> (SymmKey, SymmKey) {
+    /// function to hash chain key using HMAC to return new chain key and message key
+    ///
+    /// ```
+    /// use project::drat::{State, SymmKey};
+    ///
+    /// let k = SymmKey::new([0u8; 32]);
+    /// let (ck, mk) = State::kdf_chain(&k);
+    /// println!("{} {}", ck, mk);
+    /// assert_eq!(ck.first_key_byte(), 92u8);
+    /// assert_eq!(mk.first_key_byte(), 235u8);
+    /// ```
+    pub fn kdf_chain(chn_k: &SymmKey) -> (SymmKey, SymmKey) {
         let mut mac = <HmacSha256 as Mac>::new_from_slice(&chn_k.0).unwrap();
         mac.update(b"chain");
         let ck_bytes = mac.finalize_reset().into_bytes();
@@ -76,31 +106,60 @@ impl State {
         (SymmKey(ck_bytes.into()), SymmKey(mk_bytes.into()))
     }
 
-    fn aesgcmsiv_encrypt(key: &SymmKey, msg: &[u8], aad: &[u8]) -> Vec<u8> {
+    /// function to encrypt message with key and associated data using AES256-GCM-SIV
+    ///
+    /// ```
+    /// use project::drat::{State, SymmKey};
+    ///
+    /// let k = SymmKey::new([1u8; 32]);
+    /// let msg = b"Hello, World!";
+    /// let aad = b"Nothing important to add";
+    /// let ctxt = State::aesgcmsiv_encrypt(&k, msg, aad);
+    /// assert_eq!(ctxt[0], 152u8);
+    ///
+    /// ```
+    pub fn aesgcmsiv_encrypt(key: &SymmKey, msg: &[u8], aad: &[u8]) -> Vec<u8> {
         let cipher = Aes256GcmSiv::new(&key.0.into());
-        let nonce = Nonce::from_slice(b"Fixed nonce".as_ref());
+        let nonce = Nonce::from_slice(b"Fixed nonce!".as_ref());
         cipher.encrypt(nonce, Payload { msg, aad }).unwrap()
     }
 
-    fn aesgcmsiv_decrypt(key: &SymmKey, msg: &[u8], aad: &[u8]) -> Vec<u8> {
+    /// function to decrypt ciphertext with key and associated data using AES256-GCM-SIV
+    ///
+    /// ```
+    /// use project::drat::{State, SymmKey};
+    ///
+    /// let k = SymmKey::new([1u8; 32]);
+    /// let msg = b"Hello, World!";
+    /// let aad = b"Nothing important to add";
+    /// let ctxt = State::aesgcmsiv_encrypt(&k, msg, aad);
+    /// assert_eq!(State::aesgcmsiv_decrypt(&k, &ctxt, aad), msg);
+    ///
+    /// ```
+    pub fn aesgcmsiv_decrypt(key: &SymmKey, msg: &[u8], aad: &[u8]) -> Vec<u8> {
         let cipher = Aes256GcmSiv::new(&key.0.into());
-        let nonce = Nonce::from_slice(b"Fixed nonce".as_ref());
+        let nonce = Nonce::from_slice(b"Fixed nonce!".as_ref());
         cipher.decrypt(nonce, Payload { msg, aad }).unwrap()
     }
 
     fn concat(header: &Header, aad: &[u8]) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(Header::HEADER_LEN + aad.len());
-        bytes[..Header::HEADER_LEN].copy_from_slice(&header.as_bytes());
-        bytes[Header::HEADER_LEN..].copy_from_slice(aad);
+        bytes.extend_from_slice(&header.as_bytes());
+        bytes.extend_from_slice(aad);
         bytes
     }
 
+    pub fn dh_keygen() -> (ReusableSecret, PublicKey) {
+        let dhsk = ReusableSecret::random();
+        let dhpk = PublicKey::from(&dhsk);
+        (dhsk, dhpk)
+    }
+
     // constructors
-    pub fn ratchet_init_alice(shr_k: SymmKey, bob_dhpk: PublicKey) -> Self {
-        let dhsk_snd = ReusableSecret::random();
-        let dhpk_snd = PublicKey::from(&dhsk_snd);
+    pub fn ratchet_init_alice(shr_k: &SymmKey, bob_dhpk: PublicKey) -> Self {
+        let (dhsk_snd, dhpk_snd) = Self::dh_keygen();
         let dhpk_rcv = bob_dhpk;
-        let (rt_k, ck_snd) = Self::kdf_root(&shr_k, &dhsk_snd, &dhpk_rcv);
+        let (rt_k, ck_snd) = Self::kdf_root(shr_k, &dhsk_snd, &dhpk_rcv);
         let ck_rcv = SymmKey::default();
 
         let n_snd = 0;
@@ -122,11 +181,15 @@ impl State {
         }
     }
 
-    pub fn ratchet_init_bob(shr_k: SymmKey, bob_dhsk: ReusableSecret, bob_dhpk: PublicKey) -> Self {
+    pub fn ratchet_init_bob(
+        shr_k: &SymmKey,
+        bob_dhsk: ReusableSecret,
+        bob_dhpk: PublicKey,
+    ) -> Self {
         let dhsk_snd = bob_dhsk;
         let dhpk_snd = bob_dhpk;
         let dhpk_rcv = PublicKey::from([0; 32]);
-        let rt_k = shr_k;
+        let rt_k = shr_k.clone();
         let ck_snd = SymmKey::default();
         let ck_rcv = SymmKey::default();
 
@@ -217,8 +280,7 @@ impl State {
         self.dhpk_rcv = header.dhpk;
         (self.rt_k, self.ck_rcv) = Self::kdf_root(&self.rt_k, &self.dhsk_snd, &self.dhpk_rcv);
 
-        self.dhsk_snd = ReusableSecret::random();
-        self.dhpk_snd = PublicKey::from(&self.dhsk_snd);
+        (self.dhsk_snd, self.dhpk_snd) = Self::dh_keygen();
         (self.rt_k, self.ck_snd) = Self::kdf_root(&self.rt_k, &self.dhsk_snd, &self.dhpk_rcv);
     }
 }
