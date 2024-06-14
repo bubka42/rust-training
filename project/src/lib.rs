@@ -17,7 +17,7 @@ pub fn new_drat_state_pair() -> (State, State) {
 pub fn process_message_list(
     alice_state: &mut State,
     bob_state: &mut State,
-    messages: Vec<(bool, &[u8; 10])>,
+    messages: Vec<(bool, &[u8])>,
 ) {
     for (from_alice, message) in messages {
         if from_alice {
