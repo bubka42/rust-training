@@ -81,8 +81,8 @@ impl State {
         let hk = Hkdf::<Sha256>::new(Some(&rt_k.0), dh_out.as_bytes());
         let mut rk_bytes = [0u8; 32];
         let mut ck_bytes = [0u8; 32];
-        hk.expand("root-keygen".as_bytes(), &mut rk_bytes).unwrap();
-        hk.expand("chain-keygen".as_bytes(), &mut ck_bytes).unwrap();
+        hk.expand(b"root-keygen", &mut rk_bytes).unwrap();
+        hk.expand(b"chain-keygen", &mut ck_bytes).unwrap();
         (SymmKey(rk_bytes), SymmKey(ck_bytes))
     }
 
@@ -98,11 +98,12 @@ impl State {
     /// assert_eq!(mk.first_key_byte(), 235u8);
     /// ```
     pub fn kdf_chain(chn_k: &SymmKey) -> (SymmKey, SymmKey) {
-        let mut mac = <HmacSha256 as Mac>::new_from_slice(&chn_k.0).unwrap();
-        mac.update(b"chain");
-        let ck_bytes = mac.finalize_reset().into_bytes();
-        mac.update(b"message");
-        let mk_bytes = mac.finalize().into_bytes();
+        let mut mac_ck = <HmacSha256 as Mac>::new_from_slice(&chn_k.0).unwrap();
+        let mut mac_mk = mac_ck.clone();
+        mac_ck.update(b"chain");
+        let ck_bytes = mac_ck.finalize().into_bytes();
+        mac_mk.update(b"message");
+        let mk_bytes = mac_mk.finalize().into_bytes();
         (SymmKey(ck_bytes.into()), SymmKey(mk_bytes.into()))
     }
 
